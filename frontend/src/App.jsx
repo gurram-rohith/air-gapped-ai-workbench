@@ -1,41 +1,71 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import Chat from "./components/Chat/Chat";
 import Vision from "./components/Vision/Vision";
 import ReviewGate from "./components/ReviewGate/ReviewGate";
 import AuditLogs from "./components/AuditLogs/AuditLogs";
+import Documents from "./components/Documents/Documents";
+
+import {
+  API_BASE_URL,
+  checkBackend,
+} from "./services/api";
 
 function App() {
-  const [activeTab, setActiveTab] = useState("chat");
+  const [activeTab, setActiveTab] =
+    useState("chat");
 
-  const renderComponent = () => {
-    if (activeTab === "chat") {
-      return <Chat />;
+  const [backendOnline, setBackendOnline] =
+    useState(false);
+
+  const checkConnection = async () => {
+    const result = await checkBackend();
+
+    setBackendOnline(result !== null);
+  };
+
+  useEffect(() => {
+    checkConnection();
+
+    const interval = setInterval(
+      checkConnection,
+      10000
+    );
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case "chat":
+        return <Chat />;
+
+      case "vision":
+        return <Vision />;
+
+      case "review":
+        return <ReviewGate />;
+
+      case "audit":
+        return <AuditLogs />;
+
+      case "documents":
+        return <Documents />;
+
+      default:
+        return <Chat />;
     }
-
-    if (activeTab === "vision") {
-      return <Vision />;
-    }
-
-    if (activeTab === "review") {
-      return <ReviewGate />;
-    }
-
-    if (activeTab === "audit") {
-      return <AuditLogs />;
-    }
-
-    return <Chat />;
   };
 
   return (
     <div className="app">
-
       {/* SIDEBAR */}
-      <aside className="sidebar">
 
+      <aside className="sidebar">
         <div className="brand">
-          <div className="brand-icon">◈</div>
+          <div className="brand-icon">
+            ◈
+          </div>
 
           <div>
             <h1>Sovereign AI</h1>
@@ -51,10 +81,11 @@ function App() {
         </button>
 
         <nav className="navigation">
-
           <button
             className={`nav-item ${
-              activeTab === "chat" ? "active" : ""
+              activeTab === "chat"
+                ? "active"
+                : ""
             }`}
             onClick={() => setActiveTab("chat")}
           >
@@ -64,9 +95,13 @@ function App() {
 
           <button
             className={`nav-item ${
-              activeTab === "vision" ? "active" : ""
+              activeTab === "vision"
+                ? "active"
+                : ""
             }`}
-            onClick={() => setActiveTab("vision")}
+            onClick={() =>
+              setActiveTab("vision")
+            }
           >
             <span>🖼</span>
             Vision
@@ -74,9 +109,13 @@ function App() {
 
           <button
             className={`nav-item ${
-              activeTab === "review" ? "active" : ""
+              activeTab === "review"
+                ? "active"
+                : ""
             }`}
-            onClick={() => setActiveTab("review")}
+            onClick={() =>
+              setActiveTab("review")
+            }
           >
             <span>✓</span>
             Review Gate
@@ -84,15 +123,28 @@ function App() {
 
           <button
             className={`nav-item ${
-              activeTab === "audit" ? "active" : ""
+              activeTab === "audit"
+                ? "active"
+                : ""
             }`}
-            onClick={() => setActiveTab("audit")}
+            onClick={() =>
+              setActiveTab("audit")
+            }
           >
             <span>▤</span>
             Audit Logs
           </button>
 
-          <button className="nav-item">
+          <button
+            className={`nav-item ${
+              activeTab === "documents"
+                ? "active"
+                : ""
+            }`}
+            onClick={() =>
+              setActiveTab("documents")
+            }
+          >
             <span>📄</span>
             Documents
           </button>
@@ -101,61 +153,88 @@ function App() {
             <span>⚙</span>
             Tools
           </button>
-
         </nav>
 
         <div className="air-gapped-card">
           <div className="status-dot"></div>
 
           <div>
-            <strong>Air-gapped mode</strong>
-            <p>Local processing enabled</p>
+            <strong>
+              Air-gapped mode
+            </strong>
+
+            <p>
+              Local processing enabled
+            </p>
           </div>
         </div>
-
       </aside>
 
-
       {/* MAIN */}
+
       <main className="main-content">
-
         <header className="topbar">
-
           <div>
             <h2>
-              {activeTab === "chat" && "AI Assistant"}
-              {activeTab === "vision" && "P&ID Visual Analysis"}
-              {activeTab === "review" && "Human Review Gate"}
-              {activeTab === "audit" && "Audit Logs"}
+              {activeTab === "chat" &&
+                "AI Assistant"}
+
+              {activeTab === "vision" &&
+                "P&ID Visual Analysis"}
+
+              {activeTab === "review" &&
+                "Human Review Gate"}
+
+              {activeTab === "audit" &&
+                "Audit Logs"}
+
+              {activeTab === "documents" &&
+                "Documents"}
             </h2>
 
             <p>
-              {activeTab === "chat" && "Secure local intelligence"}
-              {activeTab === "vision" && "Engineering image analysis"}
+              {activeTab === "chat" &&
+                "Secure local intelligence"}
+
+              {activeTab === "vision" &&
+                "Engineering image analysis"}
+
               {activeTab === "review" &&
-                "Human approval and confidence verification"}
+                "Human approval and verification"}
+
               {activeTab === "audit" &&
-                "System activity and cryptographic provenance"}
+                "Cryptographic provenance and activity"}
+
+              {activeTab === "documents" &&
+                "Local knowledge sources"}
             </p>
           </div>
 
           <div className="connection">
-            <span className="online-dot"></span>
-            Frontend ready
-          </div>
+            <span
+              className={
+                backendOnline
+                  ? "online-dot"
+                  : "offline-dot"
+              }
+            ></span>
 
+            {backendOnline
+              ? "Backend connected"
+              : "Backend offline"}
+
+            <button onClick={checkConnection}>
+              ↻
+            </button>
+          </div>
         </header>
 
-
-        {/* CONTENT */}
         <section className="workspace">
-
           <div className="chat-section">
-            {renderComponent()}
+            {renderContent()}
           </div>
 
           <aside className="trust-panel">
-
             <h3>Trust Layer</h3>
 
             <div className="trust-card">
@@ -173,32 +252,44 @@ function App() {
               <strong>—</strong>
             </div>
 
-            <h3>Infrastructure</h3>
+            <h3>
+              Infrastructure
+            </h3>
 
             <div className="infrastructure">
               <p>
-                <strong>Model:</strong> phi3.5
+                <strong>Model:</strong>{" "}
+                phi3.5
               </p>
 
               <p>
-                <strong>Runtime:</strong> Ollama
+                <strong>Runtime:</strong>{" "}
+                Ollama
               </p>
 
               <p>
-                <strong>Network:</strong> LAN
+                <strong>Network:</strong>{" "}
+                LAN
               </p>
 
               <p>
-                <strong>Mode:</strong> Air-gapped
+                <strong>Mode:</strong>{" "}
+                Air-gapped
               </p>
             </div>
 
+            <div className="api-info">
+              <small>
+                API Gateway
+              </small>
+
+              <p>
+                {API_BASE_URL}
+              </p>
+            </div>
           </aside>
-
         </section>
-
       </main>
-
     </div>
   );
 }

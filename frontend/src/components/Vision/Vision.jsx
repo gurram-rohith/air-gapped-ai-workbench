@@ -1,84 +1,125 @@
 import { useState } from "react";
 
 function Vision() {
-  const [file, setFile] = useState(null);
-  const [preview, setPreview] = useState(null);
+  const [selectedFile, setSelectedFile] =
+    useState(null);
 
   const handleFileChange = (event) => {
-    const selectedFile = event.target.files[0];
+    const file = event.target.files[0];
 
-    if (!selectedFile) return;
+    if (!file) return;
 
-    setFile(selectedFile);
-
-    if (selectedFile.type.startsWith("image/")) {
-      setPreview(URL.createObjectURL(selectedFile));
-    } else {
-      setPreview(null);
-    }
-  };
-
-  const clearFile = () => {
-    setFile(null);
-    setPreview(null);
+    setSelectedFile(file);
   };
 
   return (
-    <div className="vision-container">
+    <div className="vision-page">
       <div className="vision-header">
-        <h2>P&ID Visual Analysis</h2>
-        <p>Upload an engineering image for local visual analysis.</p>
+        <div>
+          <span className="section-label">
+            COMPUTER VISION
+          </span>
+
+          <h2>P&ID Visual Analysis</h2>
+
+          <p>
+            Analyze engineering diagrams using the local
+            vision pipeline.
+          </p>
+        </div>
+
+        <div className="vision-status">
+          <span></span>
+          Local processing
+        </div>
       </div>
 
-      <div className="upload-box">
-        {!file ? (
-          <>
-            <div className="upload-icon">⬆</div>
+      <div className="vision-content">
+        {!selectedFile ? (
+          <label className="vision-upload">
+            <div className="vision-upload-icon">
+              ◫
+            </div>
 
-            <h3>Upload P&ID Image</h3>
+            <h3>Upload engineering image</h3>
 
             <p>
-              Select an image containing a Process & Instrumentation Diagram.
+              Select a P&ID or engineering diagram for
+              visual analysis.
             </p>
 
-            <label className="upload-button">
+            <span className="vision-select">
               Choose image
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-                hidden
-              />
-            </label>
-          </>
+            </span>
+
+            <small>
+              PNG · JPG · JPEG · WEBP
+            </small>
+
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              onChange={handleFileChange}
+              hidden
+            />
+          </label>
         ) : (
-          <div className="selected-file">
-            <h3>{file.name}</h3>
+          <div className="vision-preview-card">
+            <div className="vision-preview-header">
+              <div>
+                <span className="card-label">
+                  SELECTED IMAGE
+                </span>
 
-            <p>
-              {(file.size / 1024 / 1024).toFixed(2)} MB
-            </p>
+                <h3>{selectedFile.name}</h3>
+              </div>
 
-            {preview && (
+              <button
+                onClick={() => setSelectedFile(null)}
+              >
+                Remove
+              </button>
+            </div>
+
+            <div className="vision-image-wrapper">
               <img
-                src={preview}
-                alt="P&ID preview"
-                className="vision-preview"
+                src={URL.createObjectURL(selectedFile)}
+                alt="Selected engineering diagram"
               />
-            )}
+            </div>
 
-            <div className="vision-actions">
-              <button onClick={clearFile}>Remove</button>
+            <div className="vision-analysis-bar">
+              <div>
+                <span>File type</span>
+                <strong>
+                  {selectedFile.type || "Image"}
+                </strong>
+              </div>
+
+              <div>
+                <span>Size</span>
+                <strong>
+                  {(selectedFile.size / 1024).toFixed(1)} KB
+                </strong>
+              </div>
 
               <button disabled>
                 Analyze image
               </button>
             </div>
 
-            <small>
-              Analysis will be connected to the backend when the vision API is
-              available.
-            </small>
+            <div className="vision-info">
+              <span>✓</span>
+
+              <div>
+                <strong>Ready for local analysis</strong>
+
+                <p>
+                  Vision API integration will be connected
+                  when the backend endpoint is available.
+                </p>
+              </div>
+            </div>
           </div>
         )}
       </div>

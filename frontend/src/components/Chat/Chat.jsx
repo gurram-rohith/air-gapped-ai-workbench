@@ -24,36 +24,42 @@ function Chat() {
         role: "user",
         content: text,
       },
+      {
+        role: "assistant",
+        content: "",
+      },
     ]);
 
     setInput("");
     setLoading(true);
 
     try {
-      const data = await sendChatMessage(text);
+      await sendChatMessage(text, (_, fullResponse) => {
+        setMessages((prev) => {
+          const updated = [...prev];
 
-      const answer =
-        data.response ||
-        data.answer ||
-        data.message ||
-        "The backend returned no response.";
+          updated[updated.length - 1] = {
+            role: "assistant",
+            content: fullResponse,
+          };
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: answer,
-        },
-      ]);
+          return updated;
+        });
+      });
     } catch (error) {
-      setMessages((prev) => [
-        ...prev,
-        {
+      console.error(error);
+
+      setMessages((prev) => {
+        const updated = [...prev];
+
+        updated[updated.length - 1] = {
           role: "assistant",
           content:
             "Unable to connect to the backend. Please check the server connection.",
-        },
-      ]);
+        };
+
+        return updated;
+      });
     } finally {
       setLoading(false);
     }
@@ -68,43 +74,106 @@ function Chat() {
 
   return (
     <div className="chat-container">
+      <div className="chat-header">
+        <div>
+          <span className="chat-header-label">
+            LOCAL MODEL
+          </span>
+
+          <h3>AI Assistant</h3>
+
+          <p>
+            Private inference through the air-gapped
+            environment
+          </p>
+        </div>
+
+        <div className="model-badge">
+          <span className="model-dot"></span>
+          phi3.5
+        </div>
+      </div>
+
       <div className="chat-messages">
         {messages.map((message, index) => (
           <div
             key={index}
-            className={`message ${
-              message.role === "user" ? "user-message" : "assistant-message"
+            className={`message-row ${
+              message.role === "user"
+                ? "user-row"
+                : "assistant-row"
             }`}
           >
-            <div className="message-role">
-              {message.role === "user" ? "You" : "AI Assistant"}
+            <div className="message-avatar">
+              {message.role === "user" ? "U" : "AI"}
             </div>
 
-            <div className="message-content">{message.content}</div>
+            <div
+              className={`message ${
+                message.role === "user"
+                  ? "user-message"
+                  : "assistant-message"
+              }`}
+            >
+              <div className="message-role">
+                {message.role === "user"
+                  ? "You"
+                  : "Sovereign AI"}
+              </div>
+
+              <div className="message-content">
+                {message.content}
+              </div>
+            </div>
           </div>
         ))}
 
-        {loading && (
-          <div className="message assistant-message">
-            <div className="message-role">AI Assistant</div>
-            <div className="message-content">Thinking...</div>
-          </div>
-        )}
+        {loading &&
+          messages[messages.length - 1]?.content === "" && (
+            <div className="message-row assistant-row">
+              <div className="message-avatar">AI</div>
+
+              <div className="message assistant-message">
+                <div className="message-role">
+                  Sovereign AI
+                </div>
+
+                <div className="typing-indicator">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+              </div>
+            </div>
+          )}
       </div>
 
-      <div className="chat-input-area">
-        <textarea
-          value={input}
-          onChange={(event) => setInput(event.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Ask your AI assistant..."
-          rows={3}
-          disabled={loading}
-        />
+      <div className="chat-input-wrapper">
+        <div className="chat-input-area">
+          <textarea
+            value={input}
+            onChange={(event) =>
+              setInput(event.target.value)
+            }
+            onKeyDown={handleKeyDown}
+            placeholder="Ask Sovereign AI anything..."
+            rows={2}
+            disabled={loading}
+          />
 
-        <button onClick={handleSend} disabled={loading || !input.trim()}>
-          {loading ? "Sending..." : "Send"}
-        </button>
+          <button
+            className="send-button"
+            onClick={handleSend}
+            disabled={loading || !input.trim()}
+          >
+            {loading ? "..." : "↑"}
+          </button>
+        </div>
+
+        <div className="input-footer">
+          <span>Enter to send</span>
+          <span>Shift + Enter for new line</span>
+        </div>
       </div>
     </div>
   );
