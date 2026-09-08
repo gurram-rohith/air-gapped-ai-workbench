@@ -1,3 +1,5 @@
+# pyright: reportMissingImports=false, reportGeneralTypeIssues=false
+# mypy: ignore-missing-imports
 """
 Document Ingestion & Chunking Module for Air-Gapped AI Workbench.
 
@@ -10,15 +12,43 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import List, Union
+from typing import Any, List, Union
 
-from langchain_community.document_loaders import PyPDFLoader, TextLoader
-from langchain_core.documents import Document
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+try:
+    from langchain_community.document_loaders import PyPDFLoader, TextLoader  # type: ignore
+except ImportError:
+    try:
+        from langchain.document_loaders import PyPDFLoader, TextLoader  # type: ignore
+    except ImportError:
+        PyPDFLoader = None  # type: ignore
+        TextLoader = None  # type: ignore
+
+try:
+    from langchain_core.documents import Document  # type: ignore
+except ImportError:
+    try:
+        from langchain.schema import Document  # type: ignore
+    except ImportError:
+        try:
+            from langchain.docstore.document import Document  # type: ignore
+        except ImportError:
+            class Document:  # type: ignore
+                """Fallback Document container if LangChain is not yet installed."""
+                def __init__(self, page_content: str = "", metadata: dict[str, Any] | None = None) -> None:
+                    self.page_content = page_content
+                    self.metadata = metadata or {}
+
+try:
+    from langchain_text_splitters import RecursiveCharacterTextSplitter  # type: ignore
+except ImportError:
+    try:
+        from langchain.text_splitter import RecursiveCharacterTextSplitter  # type: ignore
+    except ImportError:
+        RecursiveCharacterTextSplitter = None  # type: ignore
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["load_and_chunk_documents"]
+__all__ = ["load_and_chunk_documents", "Document"]
 
 
 def load_and_chunk_documents(
@@ -56,6 +86,12 @@ def load_and_chunk_documents(
         logger.info("No supported document files (.pdf, .txt) found in '%s'.", target_dir)
         return []
 
+    if PyPDFLoader is None or TextLoader is None:
+        raise ImportError(
+            "LangChain document loaders are not installed. "
+            "Please install dependencies via: pip install langchain-community pypdf"
+        )
+
     loaded_documents: List[Document] = []
 
     for file_path in raw_files:
@@ -63,14 +99,14 @@ def load_and_chunk_documents(
         logger.info("Loading document: %s", file_path.name)
         try:
             if suffix == ".pdf":
-                pdf_loader = PyPDFLoader(file_path=str(file_path))
+                pdf_loader = PyPDFLoader(str(file_path))
                 loaded_documents.extend(pdf_loader.load())
             elif suffix == ".txt":
                 try:
-                    txt_loader = TextLoader(file_path=str(file_path), encoding="utf-8")
+                    txt_loader = TextLoader(str(file_path), encoding="utf-8")
                     loaded_documents.extend(txt_loader.load())
                 except UnicodeDecodeError:
-                    txt_loader = TextLoader(file_path=str(file_path), autodetect_encoding=True)
+                    txt_loader = TextLoader(str(file_path), autodetect_encoding=True)
                     loaded_documents.extend(txt_loader.load())
         except Exception as exc:
             logger.error("Failed to load document '%s': %s", file_path, exc, exc_info=True)
@@ -78,6 +114,12 @@ def load_and_chunk_documents(
     if not loaded_documents:
         logger.warning("No document content could be extracted from '%s'.", target_dir)
         return []
+
+    if RecursiveCharacterTextSplitter is None:
+        raise ImportError(
+            "RecursiveCharacterTextSplitter is not installed. "
+            "Please install dependencies via: pip install langchain-text-splitters"
+        )
 
     # Initialize text splitter
     text_splitter = RecursiveCharacterTextSplitter(

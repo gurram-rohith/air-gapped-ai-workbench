@@ -1,3 +1,5 @@
+# pyright: reportMissingImports=false, reportGeneralTypeIssues=false
+# mypy: ignore-missing-imports
 """
 Vector Store and Retrieval Module for Air-Gapped AI Workbench.
 
@@ -5,34 +7,45 @@ Provides persistent vector indexing and similarity search using ChromaDB
 and local Ollama embeddings (nomic-embed-text) running strictly offline.
 """
 
+from __future__ import annotations
+
 import logging
 import os
 from pathlib import Path
 from typing import List, Optional, Union
 
 try:
-    from langchain_core.documents import Document
+    from langchain_core.documents import Document  # type: ignore
 except ImportError:
     try:
-        from langchain.schema import Document
+        from langchain.schema import Document  # type: ignore
     except ImportError:
-        from langchain.docstore.document import Document
+        try:
+            from langchain.docstore.document import Document  # type: ignore
+        except ImportError:
+            from backend.rag.loader import Document  # type: ignore
 
 try:
-    from langchain_ollama import OllamaEmbeddings
+    from langchain_ollama import OllamaEmbeddings  # type: ignore
 except ImportError:
     try:
-        from langchain_community.embeddings import OllamaEmbeddings
+        from langchain_community.embeddings import OllamaEmbeddings  # type: ignore
     except ImportError:
-        from langchain.embeddings import OllamaEmbeddings
+        try:
+            from langchain.embeddings import OllamaEmbeddings  # type: ignore
+        except ImportError:
+            OllamaEmbeddings = None  # type: ignore
 
 try:
-    from langchain_chroma import Chroma
+    from langchain_chroma import Chroma  # type: ignore
 except ImportError:
     try:
-        from langchain_community.vectorstores import Chroma
+        from langchain_community.vectorstores import Chroma  # type: ignore
     except ImportError:
-        from langchain.vectorstores import Chroma
+        try:
+            from langchain.vectorstores import Chroma  # type: ignore
+        except ImportError:
+            Chroma = None  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +70,11 @@ def get_embeddings(
     Returns:
         OllamaEmbeddings: Configured embedding model client.
     """
+    if OllamaEmbeddings is None:
+        raise ImportError(
+            "OllamaEmbeddings is not installed. "
+            "Please install dependencies via: pip install langchain-ollama or langchain-community"
+        )
     return OllamaEmbeddings(
         base_url=base_url,
         model=model,
@@ -81,6 +99,12 @@ def get_vector_store(
     Returns:
         Chroma: Configured persistent vector store.
     """
+    if Chroma is None:
+        raise ImportError(
+            "Chroma vector store is not installed. "
+            "Please install dependencies via: pip install langchain-chroma chromadb"
+        )
+
     persist_dir_path = Path(persist_directory)
     persist_dir_path.mkdir(parents=True, exist_ok=True)
 
@@ -117,7 +141,7 @@ def store_documents(
         logger.warning("No document chunks provided to store_documents(). Skipping.")
         return []
 
-    logger.info(f"Storing {len(chunks)} chunks into ChromaDB at '{persist_directory}'...")
+    logger.info("Storing %d chunks into ChromaDB at '%s'...", len(chunks), persist_directory)
     vector_store = get_vector_store(
         persist_directory=persist_directory,
         collection_name=collection_name,
@@ -134,7 +158,7 @@ def store_documents(
         except Exception:
             pass
 
-    logger.info(f"Successfully stored {len(ids) if ids else len(chunks)} document chunks in ChromaDB.")
+    logger.info("Successfully stored %d document chunks in ChromaDB.", len(ids) if ids else len(chunks))
     return ids if ids else []
 
 
@@ -166,7 +190,7 @@ def search_similar_documents(
 
     persist_dir_path = Path(persist_directory)
     if not persist_dir_path.exists():
-        logger.warning(f"ChromaDB directory '{persist_directory}' does not exist yet. Returning empty results.")
+        logger.warning("ChromaDB directory '%s' does not exist yet. Returning empty results.", persist_directory)
         return []
 
     try:
@@ -178,8 +202,8 @@ def search_similar_documents(
         )
 
         results = vector_store.similarity_search(query=query, k=k)
-        logger.info(f"Retrieved {len(results)} relevant chunks for query: '{query[:50]}...'")
+        logger.info("Retrieved %d relevant chunks for query: '%s...'", len(results), query[:50])
         return results
-    except Exception as e:
-        logger.error(f"Error executing similarity search: {e}", exc_info=True)
+    except Exception as exc:
+        logger.error("Error executing similarity search: %s", exc, exc_info=True)
         return []
