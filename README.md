@@ -28,3 +28,7 @@ Welcome to the team repository! This project implements a sovereign, air-gapped 
 ```bash
 git clone <your-repository-url>
 cd air-gapped-ai-workbench
+
+## Author
+
+Saieshwar Gujjeti
