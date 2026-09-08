@@ -1,5 +1,5 @@
 """
-RAG Pipeline Integration & Verification Entry Point.
+RAG Pipeline Integration & Verification Demo Script.
 
 Tests end-to-end document ingestion, chunking, ChromaDB vector indexing,
 and similarity search with offline Ollama embeddings.
@@ -23,7 +23,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s - %(message)s",
 )
-logger = logging.getLogger("rag_pipeline")
+logger = logging.getLogger("rag_demo")
 
 SAMPLE_DOCS_DIR = "./data/raw_docs"
 SAMPLE_FILE_PATH = os.path.join(SAMPLE_DOCS_DIR, "sample_workbench_overview.txt")
@@ -57,12 +57,12 @@ def ensure_sample_documents(docs_dir: str = SAMPLE_DOCS_DIR) -> None:
     ]
 
     if not existing_files:
-        logger.info(f"Directory '{docs_dir}' is empty. Writing sample test document...")
+        logger.info("Directory '%s' is empty. Writing sample test document...", docs_dir)
         with open(SAMPLE_FILE_PATH, "w", encoding="utf-8") as f:
             f.write(SAMPLE_CONTENT.strip())
-        logger.info(f"Sample test document created at: '{SAMPLE_FILE_PATH}'")
+        logger.info("Sample test document created at: '%s'", SAMPLE_FILE_PATH)
     else:
-        logger.info(f"Found {len(existing_files)} existing document(s) in '{docs_dir}'.")
+        logger.info("Found %d existing document(s) in '%s'.", len(existing_files), docs_dir)
 
 
 def run_pipeline(

@@ -12,7 +12,7 @@
    - [1. `loader.py` — Ingestion & Text Chunking](#1-loaderpy--document-ingestion--chunking)
    - [2. `vector_store.py` — ChromaDB & Local Ollama Embeddings](#2-vector_storepy--persistent-vector-storage)
    - [3. `service.py` — High-Level Interface Layer](#3-servicepy--service-interface-layer)
-   - [4. `main.py` — Pipeline Integration & Diagnostic Runner](#4-mainpy--pipeline-integration--verification)
+   - [4. `rag_demo.py` — Pipeline Integration & Diagnostic Demo](#4-rag_demopy--pipeline-integration--verification)
    - [5. `test_service.py` — Automated Sanity Suite](#5-test_servicepy--automated-sanity-test-suite)
    - [6. `__init__.py` — Package Namespace & Public API](#6-__init__py--package-namespace--public-api)
 4. [Public API Reference](#-public-api-reference)
@@ -155,8 +155,8 @@ def retrieve_context_for_prompt(user_query: str, top_k: int = 3) -> List[str]:
 
 ---
 
-### 4. `main.py` — Pipeline Integration & Verification
-- **Primary Function**: End-to-end integration and diagnostics runner.
+### 4. `rag_demo.py` — Pipeline Integration & Verification Demo
+- **Primary Function**: End-to-end integration and diagnostics demo runner.
 - **Key Features**:
   - Automatically seeds sample workbench architecture documentation if `data/raw_docs/` is empty.
   - Executes chunking, vector indexing, and test retrieval sequentially.
@@ -164,7 +164,7 @@ def retrieve_context_for_prompt(user_query: str, top_k: int = 3) -> List[str]:
 
 ```bash
 # Execute End-to-End Verification Pipeline
-python backend/rag/main.py "How is the air-gapped workbench configured?"
+python backend/rag/rag_demo.py "How is the air-gapped workbench configured?"
 ```
 
 ---

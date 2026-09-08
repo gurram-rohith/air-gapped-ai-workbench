@@ -21,7 +21,7 @@ This PR completes the end-to-end **Retrieval-Augmented Generation (RAG) Pipeline
    - Extracts clean text excerpts from ChromaDB and safely returns `list[str]`.
    - Handles uninitialized vector stores and host network interruptions gracefully by returning empty lists `[]` rather than throwing uncaught exceptions.
 
-4. **Sanity Verification & Testing (`backend/rag/test_service.py` & `backend/rag/main.py`)**:
+4. **Sanity Verification & Testing (`backend/rag/test_service.py` & `backend/rag/rag_demo.py`)**:
    - Standalone scripts to test the pipeline end-to-end from ingestion to vector search and text retrieval.
 
 ---
@@ -75,7 +75,7 @@ httpx
 
 ## 🧪 Verification & Testing
 
-The implementation was validated using the following test cases in `backend/rag/test_service.py` and `backend/rag/main.py`:
+The implementation was validated using the following test cases in `backend/rag/test_service.py` and `backend/rag/rag_demo.py`:
 
 - [x] **Automatic Directory Provisioning**: Verified that `./data/raw_docs/` and `./data/processed_chunks/` are created automatically if missing.
 - [x] **Chunk Extraction**: Validated that `load_and_chunk_documents()` successfully extracts chunks with metadata tracking (`source`, `page`).
