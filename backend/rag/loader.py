@@ -6,30 +6,19 @@ edge cases gracefully (missing or empty folder), and chunks content
 using RecursiveCharacterTextSplitter for downstream vector embedding.
 """
 
+from __future__ import annotations
+
 import logging
-import os
 from pathlib import Path
 from typing import List, Union
 
-try:
-    from langchain_core.documents import Document
-except ImportError:
-    try:
-        from langchain.schema import Document
-    except ImportError:
-        from langchain.docstore.document import Document
-
-try:
-    from langchain_community.document_loaders import PyPDFLoader, TextLoader
-except ImportError:
-    from langchain.document_loaders import PyPDFLoader, TextLoader
-
-try:
-    from langchain_text_splitters import RecursiveCharacterTextSplitter
-except ImportError:
-    from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_community.document_loaders import PyPDFLoader, TextLoader
+from langchain_core.documents import Document
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 logger = logging.getLogger(__name__)
+
+__all__ = ["load_and_chunk_documents"]
 
 
 def load_and_chunk_documents(
@@ -41,7 +30,7 @@ def load_and_chunk_documents(
     Read text (.txt) and PDF (.pdf) files from the specified directory and split them into chunks.
 
     Args:
-        docs_dir (str | Path): Path to raw documents directory (default: "./data/raw_docs").
+        docs_dir (Union[str, Path]): Path to raw documents directory (default: "./data/raw_docs").
         chunk_size (int): Maximum size of each text chunk (default: 500).
         chunk_overlap (int): Number of overlapping characters between chunks (default: 50).
 
@@ -52,7 +41,7 @@ def load_and_chunk_documents(
 
     # Ensure directory exists; create it if missing
     if not target_dir.exists():
-        logger.warning(f"Raw documents directory '{target_dir}' does not exist. Creating it.")
+        logger.warning("Raw documents directory '%s' does not exist. Creating it.", target_dir)
         target_dir.mkdir(parents=True, exist_ok=True)
         return []
 
@@ -64,33 +53,30 @@ def load_and_chunk_documents(
     ]
 
     if not raw_files:
-        logger.info(f"No supported document files (.pdf, .txt) found in '{target_dir}'.")
+        logger.info("No supported document files (.pdf, .txt) found in '%s'.", target_dir)
         return []
 
     loaded_documents: List[Document] = []
 
     for file_path in raw_files:
         suffix = file_path.suffix.lower()
-        logger.info(f"Loading document: {file_path.name}")
+        logger.info("Loading document: %s", file_path.name)
         try:
             if suffix == ".pdf":
-                loader = PyPDFLoader(str(file_path))
-                docs = loader.load()
-                loaded_documents.extend(docs)
+                pdf_loader = PyPDFLoader(file_path=str(file_path))
+                loaded_documents.extend(pdf_loader.load())
             elif suffix == ".txt":
-                # Attempt UTF-8 load with fallback
                 try:
-                    loader = TextLoader(str(file_path), encoding="utf-8")
-                    docs = loader.load()
+                    txt_loader = TextLoader(file_path=str(file_path), encoding="utf-8")
+                    loaded_documents.extend(txt_loader.load())
                 except UnicodeDecodeError:
-                    loader = TextLoader(str(file_path), autodetect_encoding=True)
-                    docs = loader.load()
-                loaded_documents.extend(docs)
-        except Exception as e:
-            logger.error(f"Failed to load document '{file_path}': {e}", exc_info=True)
+                    txt_loader = TextLoader(file_path=str(file_path), autodetect_encoding=True)
+                    loaded_documents.extend(txt_loader.load())
+        except Exception as exc:
+            logger.error("Failed to load document '%s': %s", file_path, exc, exc_info=True)
 
     if not loaded_documents:
-        logger.warning(f"No document content could be extracted from '{target_dir}'.")
+        logger.warning("No document content could be extracted from '%s'.", target_dir)
         return []
 
     # Initialize text splitter
@@ -102,7 +88,9 @@ def load_and_chunk_documents(
 
     chunks = text_splitter.split_documents(loaded_documents)
     logger.info(
-        f"Ingestion complete: Loaded {len(loaded_documents)} document sections from "
-        f"{len(raw_files)} files; produced {len(chunks)} chunks."
+        "Ingestion complete: Loaded %d document sections from %d files; produced %d chunks.",
+        len(loaded_documents),
+        len(raw_files),
+        len(chunks),
     )
     return chunks
