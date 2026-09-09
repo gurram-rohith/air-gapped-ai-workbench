@@ -5,7 +5,7 @@ from urllib.request import Request, urlopen
 from urllib.error import URLError, HTTPError
 
 
-OLLAMA_URL = "http://192.168.137.212:11434/api/generate"
+OLLAMA_URL = "http://127.0.0.1:11434/api/generate"
 OLLAMA_MODEL = "phi3.5:latest"
 
 

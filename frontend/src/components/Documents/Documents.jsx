@@ -1,28 +1,51 @@
 import { useState } from "react";
 
+import { uploadDocument, deleteDocument } from "../../services/api";
 function Documents() {
   const [documents, setDocuments] = useState([]);
 
-  const handleFileChange = (event) => {
+  const handleFileChange = async (event) => {
     const file = event.target.files[0];
-
     if (!file) return;
 
+    const docId = Date.now();
+
+    // 3. Immediately add it to the UI with an "Uploading..." status
     setDocuments((prev) => [
       ...prev,
       {
-        id: Date.now(),
+        id: docId,
         name: file.name,
         size: file.size,
         type: file.type || "Document",
-        extension:
-          file.name.split(".").pop()?.toUpperCase() ||
-          "FILE",
-        status: "Ready",
+        extension: file.name.split(".").pop()?.toUpperCase() || "FILE",
+        status: "Uploading...", 
       },
     ]);
 
-    event.target.value = "";
+    event.target.value = ""; // Clear the input
+
+    // 4. Send it to the FastAPI backend
+    try {
+      const result = await uploadDocument(file);
+      console.log("Backend ingestion success:", result);
+
+      // 5. Update UI status to "Ready" once backend confirms receipt
+      setDocuments((prev) =>
+        prev.map((doc) =>
+          doc.id === docId ? { ...doc, status: "Ready" } : doc
+        )
+      );
+    } catch (error) {
+      console.error("Backend ingestion failed:", error);
+      
+      // Update UI status to "Error" if it fails
+      setDocuments((prev) =>
+        prev.map((doc) =>
+          doc.id === docId ? { ...doc, status: "Error" } : doc
+        )
+      );
+    }
   };
 
   const removeDocument = (id) => {
@@ -156,13 +179,11 @@ function Documents() {
                   </div>
 
                   <button
-                    className="document-remove"
-                    onClick={() =>
-                      removeDocument(document.id)
-                    }
-                  >
-                    Remove
-                  </button>
+  className="document-remove"
+  onClick={() => removeDocument(document.id, document.name)}
+>
+  Remove
+</button>
                 </div>
               ))}
             </div>

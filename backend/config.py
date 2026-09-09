@@ -1,12 +1,14 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
-    # Fallback to localhost if no .env is found; overridden by .env file
-    ollama_host: str = "http://192.168.137.212:11434"
-    default_model: str = "phi3.5"
+    # Fallback to LAN host IP if no .env is found; overridden by .env file
+    ollama_host: str = "http://127.0.0.1:11434"
+    default_model: str = "phi3.5:latest"
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore"
+    )
 
 settings = Settings()

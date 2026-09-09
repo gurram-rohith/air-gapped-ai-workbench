@@ -45,7 +45,7 @@ class TaskRouter:
         model_map = {
             TaskType.CODING: getattr(settings, "coding_model", "qwen2.5-coder:1.5b"),
             TaskType.VISION: getattr(settings, "vision_model", "moondream"),
-            TaskType.REASONING: getattr(settings, "reasoning_model", "phi3.5"),
+            TaskType.REASONING: getattr(settings, "reasoning_model", "phi3.5:latest"),
             TaskType.GENERAL: settings.default_model,
         }
 
