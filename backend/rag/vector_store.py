@@ -1,3 +1,4 @@
+from __future__ import annotations
 # pyright: reportMissingImports=false, reportGeneralTypeIssues=false
 # mypy: ignore-missing-imports
 """
@@ -6,8 +7,8 @@ Vector Store and Retrieval Module for Air-Gapped AI Workbench.
 Provides persistent vector indexing and similarity search using ChromaDB
 and local Ollama embeddings (nomic-embed-text) running strictly offline.
 """
-
-from __future__ import annotations
+from langchain_ollama import OllamaEmbeddings
+from langchain_chroma import Chroma
 
 import logging
 import os

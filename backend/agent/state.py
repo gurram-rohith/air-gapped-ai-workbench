@@ -5,7 +5,7 @@ from backend.schemas import TaskType
 class AgentState(BaseModel):
     user_prompt: str
     task_type: TaskType = TaskType.GENERAL
-    selected_model: str = "phi3.5"
+    selected_model: str = "phi3.5:latest"
     retrieved_context: Optional[str] = None
     generated_draft: Optional[str] = None
     tool_calls: List[str] = Field(default_factory=list)

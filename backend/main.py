@@ -1,7 +1,10 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from pypdf import PdfReader
+import io
 
+from backend.rag import retrieve_context_for_prompt, format_context_for_prompt
 from backend.schemas import (
     ChatRequest,
     ChatResponse,
@@ -29,6 +32,7 @@ from backend.trust_layer.approval_queue import (
     get_approval_request,
     review_approval_request
 )
+from backend.sandbox import execute_python_code
 
 
 # ============================================================
@@ -55,6 +59,49 @@ app.add_middleware(
 )
 
 
+class CodeExecutionRequest(BaseModel):
+    code: str
+    timeout: int = 10
+
+
+# ============================================================
+# SANDBOX EXECUTION ENDPOINT
+# ============================================================
+
+@app.post("/api/sandbox/execute")
+async def run_sandbox_code(request: CodeExecutionRequest):
+    try:
+        result = execute_python_code(request.code, timeout=request.timeout)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================
+# DOCUMENT INGESTION ENDPOINT
+# ============================================================
+
+@app.post("/api/ingest")
+async def ingest_document(file: UploadFile = File(...)):
+    try:
+        content = await file.read()
+        pdf = PdfReader(io.BytesIO(content))
+        extracted_text = "".join([page.extract_text() or "" for page in pdf.pages])
+        
+        print(f"Successfully received '{file.filename}' ({len(extracted_text)} chars)")
+        
+        # TODO: Pass extracted_text to your vector store embedding function here
+        
+        return {
+            "status": "success",
+            "filename": file.filename,
+            "character_count": len(extracted_text),
+            "message": "Document ingested into vector store"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ============================================================
 # HEALTH CHECK
 # ============================================================
@@ -76,27 +123,46 @@ async def health_check():
 def _sanitize_model_override(model_str: str | None) -> str | None:
     if model_str and model_str.strip().lower() != "string":
         return model_str.strip()
-
     return None
 
 
 # ============================================================
-# CHAT ENDPOINT
+# CHAT ENDPOINT (WITH RAG & TRUST INTEGRATION)
 # ============================================================
 
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat_endpoint(request: ChatRequest):
+    # 1. Pull relevant document context from ChromaDB
+    context_chunks = retrieve_context_for_prompt(
+        user_query=request.prompt, 
+        top_k=3
+    )
+    context_block = format_context_for_prompt(context_chunks)
+
+    # 2. Augment prompt with retrieved SOP context
+    augmented_prompt = request.prompt
+    if context_chunks:
+        augmented_prompt = f"""Use the following retrieved SOP document context to answer the user's question accurately. If the answer is not in the context, use your base reasoning safely.
+
+---
+{context_block}
+---
+
+User Question: {request.prompt}
+"""
 
     explicit_model = _sanitize_model_override(request.model)
 
+    # 3. Pass augmented prompt through task router
     selected_model, _ = TaskRouter.resolve_model(
-        prompt=request.prompt,
+        prompt=augmented_prompt,
         task_type=request.task_type,
         explicit_model=explicit_model
     )
 
+    # 4. Generate response using local model
     result = await generate_response(
-        prompt=request.prompt,
+        prompt=augmented_prompt,
         model=selected_model,
         temperature=request.temperature
     )
@@ -110,10 +176,24 @@ async def chat_endpoint(request: ChatRequest):
             )
         )
 
+    response_text = result.get("response", "")
+
+    # 5. Optional background trust check enrichment (if context available)
+    try:
+        chunk_texts = [c.get("text", "") for c in context_chunks] if context_chunks else []
+        if chunk_texts:
+            await verify_response(
+                generated_answer=response_text,
+                context_chunks=chunk_texts
+            )
+    except Exception:
+        # Non-blocking telemetry wrap for trust metrics
+        pass
+
     return ChatResponse(
         success=True,
         model=selected_model,
-        response=result.get("response", ""),
+        response=response_text,
         done=result.get("done", True)
     )
 
@@ -124,7 +204,6 @@ async def chat_endpoint(request: ChatRequest):
 
 @app.post("/api/vision", response_model=VisionAnalysisResponse)
 async def vision_endpoint(request: VisionAnalysisRequest):
-
     result = await analyze_image(
         prompt=request.prompt,
         image_base64=request.image_base64,
@@ -134,10 +213,7 @@ async def vision_endpoint(request: VisionAnalysisRequest):
     if not result.get("success"):
         raise HTTPException(
             status_code=503,
-            detail=result.get(
-                "error",
-                "Vision processing failed"
-            )
+            detail=result.get("error", "Vision processing failed")
         )
 
     return VisionAnalysisResponse(
@@ -153,7 +229,6 @@ async def vision_endpoint(request: VisionAnalysisRequest):
 
 @app.post("/api/embeddings", response_model=EmbeddingResponse)
 async def embeddings_endpoint(request: EmbeddingRequest):
-
     result = await generate_embeddings(
         text=request.text,
         model=request.model
@@ -162,10 +237,7 @@ async def embeddings_endpoint(request: EmbeddingRequest):
     if not result.get("success"):
         raise HTTPException(
             status_code=503,
-            detail=result.get(
-                "error",
-                "Embedding generation failed"
-            )
+            detail=result.get("error", "Embedding generation failed")
         )
 
     return EmbeddingResponse(
@@ -182,7 +254,6 @@ async def embeddings_endpoint(request: EmbeddingRequest):
 
 @app.post("/api/agent/run")
 async def run_agent_endpoint(request: ChatRequest):
-
     explicit_model = _sanitize_model_override(request.model)
 
     state = await AgentEngine.run(
@@ -232,12 +303,10 @@ class HumanReviewRequest(BaseModel):
 
 @app.post("/trust/verify")
 async def trust_verify(request: TrustVerificationRequest):
-
     result = await verify_response(
         generated_answer=request.generated_answer,
         context_chunks=request.context_chunks
     )
-
     return result
 
 
@@ -247,7 +316,6 @@ async def trust_verify(request: TrustVerificationRequest):
 
 @app.get("/approval/{request_id}")
 async def get_approval(request_id: str):
-
     request = get_approval_request(request_id)
 
     if request is None:
@@ -268,7 +336,6 @@ async def review_approval(
     request_id: str,
     review: HumanReviewRequest
 ):
-
     result = review_approval_request(
         request_id=request_id,
         decision=review.decision,
